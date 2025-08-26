@@ -22,20 +22,23 @@ if uploaded_pqe and uploaded_ie:
     # Filter branch
     pqe = pqe[pqe["branch_name"] == "Domanza"]
 
+    # Filter only Shopify rows with Location = Domanza
+    ie_domanza = ie[ie["Location"] == "Domanza"]
+
     # Merge
     merged = pd.merge(
         pqe,
-        ie,
+        ie_domanza,
         how="left",
         left_on="barcodes",
         right_on="SKU",
         suffixes=("_nard", "_shopify")
     )
 
-    # Calculate fields
+    # Calculate fields (⚠️ change 'Available' to the real quantity column in Shopify export)
     merged["nard_qty"] = merged["available_quantity"]
-    merged["shopify_qty"] = merged["Domanza"]
-    merged["qty_diff"] = (merged["available_quantity"] - merged["Domanza"]).fillna(0)
+    merged["shopify_qty"] = merged["Available"]
+    merged["qty_diff"] = (merged["available_quantity"] - merged["shopify_qty"]).fillna(0)
 
     # Define flag
     def get_flag(row):
@@ -67,3 +70,6 @@ if uploaded_pqe and uploaded_ie:
         file_name="domanza_shopify_compare.csv",
         mime="text/csv"
     )
+
+    # Show columns for debugging
+    st.write("📌 Shopify columns detected:", ie.columns.tolist())
