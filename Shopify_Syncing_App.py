@@ -1,77 +1,82 @@
 import streamlit as st
 import pandas as pd
 
-# رفع ملفات CSV (Products_Quantities_export و inventory_export)
-st.title("🔍 Shopify vs Nard Stock Sync Checker")
+st.set_page_config(page_title="Domanza Shopify Syncing", layout="wide")
 
-pqe_file = st.file_uploader("Upload Products_Quantities_export CSV", type=["csv"])
-ie_file = st.file_uploader("Upload inventory_export CSV", type=["csv"])
+st.title("📦 Domanza vs Shopify Stock Sync Checker")
+
+# --- File uploaders ---
+st.sidebar.header("Upload Files")
+pqe_file = st.sidebar.file_uploader("Upload Products_Quantities_export.xlsx", type=["xlsx"])
+ie_file = st.sidebar.file_uploader("Upload inventory_export.xlsx", type=["xlsx"])
 
 if pqe_file and ie_file:
-    # قراءة الملفات
-    pqe = pd.read_csv(pqe_file)
-    ie = pd.read_csv(ie_file)
+    # Read both Excel files
+    pqe = pd.read_excel(pqe_file)
+    ie = pd.read_excel(ie_file)
 
-    # فلترة Inventory export على Location = Domanza
-    ie = ie[ie["Location"] == "Domanza"]
+    # Make sure columns exist
+    st.write("✅ Loaded PQE columns:", list(pqe.columns))
+    st.write("✅ Loaded Inventory columns:", list(ie.columns))
 
-    # Merge
-    df = pd.merge(
-        pqe[pqe["branch_name"] == "Domanza"],
-        ie,
-        left_on="barcodes",
-        right_on="SKU",
-        how="left"
-    )
+    # Handle tricky column names
+    shopify_col = None
+    for col in ie.columns:
+        if "Available" in col:  # fuzzy match
+            shopify_col = col
+            break
 
-    # حساب الأعمدة المطلوبة
-    df["nard_qty"] = df["available_quantity"]
-    df["shopify_qty"] = df["Available (not editable)"]
-    df["qty_diff"] = df["nard_qty"].fillna(0) - df["shopify_qty"].fillna(0)
+    if shopify_col is None:
+        st.error("❌ Couldn't find column containing 'Available' in inventory_export file.")
+    else:
+        # Rename for consistency
+        ie = ie.rename(columns={shopify_col: "shopify_qty"})
 
-    def flag(row):
-        if row["nard_qty"] > 0 and pd.isna(row["shopify_qty"]):
-            return "not available_in_shopify"
-        elif row["nard_qty"] == 0 and pd.isna(row["shopify_qty"]):
-            return "dead_item"
-        elif row["nard_qty"] != row["shopify_qty"]:
-            return "miss match_qty"
-        elif row["nard_qty"] == row["shopify_qty"]:
-            return "synced_sku"
-        else:
+        # Merge like your SQL
+        merged = pd.merge(
+            pqe,
+            ie,
+            how="left",
+            left_on="barcodes",
+            right_on="SKU"
+        )
+
+        # Only filter Domanza location
+        merged = merged[merged["Location"] == "Domanza"]
+        merged = merged[merged["branch_name"] == "Domanza"]
+
+        # Rename PQE column
+        merged["nard_qty"] = merged["available_quantity"]
+
+        # Qty diff
+        merged["qty_diff"] = merged["nard_qty"].fillna(0) - merged["shopify_qty"].fillna(0)
+
+        # sku_flag logic
+        def flag_row(row):
+            if row["nard_qty"] > 0 and pd.isna(row["shopify_qty"]):
+                return "not available_in_shopify"
+            elif row["nard_qty"] == 0 and pd.isna(row["shopify_qty"]):
+                return "dead_item"
+            elif row["nard_qty"] != row["shopify_qty"]:
+                return "miss match_qty"
+            elif row["nard_qty"] == row["shopify_qty"]:
+                return "synced_sku"
             return None
 
-    df["sku_flag"] = df.apply(flag, axis=1)
+        merged["sku_flag"] = merged.apply(flag_row, axis=1)
 
-    # اختيار أعمدة العرض
-    result = df[[
-        "name_ar",
-        "barcodes",
-        "nard_qty",
-        "shopify_qty",
-        "qty_diff",
-        "sale_price",
-        "sku_flag"
-    ]]
+        # Select relevant columns
+        final = merged[
+            ["name_ar", "barcodes", "nard_qty", "shopify_qty", "qty_diff", "sale_price", "sku_flag"]
+        ]
 
-    # فلتر حسب sku_flag
-    filter_flag = st.multiselect(
-        "Filter by SKU Flag",
-        options=result["sku_flag"].dropna().unique(),
-        default=result["sku_flag"].dropna().unique()
-    )
+        # Show results
+        st.subheader("Results")
+        st.dataframe(final, use_container_width=True)
 
-    filtered = result[result["sku_flag"].isin(filter_flag)]
+        # CSV download
+        csv = final.to_csv(index=False).encode("utf-8")
+        st.download_button("📥 Download Results as CSV", data=csv, file_name="sync_results.csv", mime="text/csv")
 
-    st.dataframe(filtered, use_container_width=True)
-
-    # تحميل كـ CSV
-    csv = filtered.to_csv(index=False).encode("utf-8")
-    st.download_button(
-        label="📥 Download CSV",
-        data=csv,
-        file_name="stock_check.csv",
-        mime="text/csv"
-    )
 else:
-    st.info("⬆️ Please upload both CSV files to continue.")
+    st.info("👆 Please upload both files to start.")
