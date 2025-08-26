@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import sqlalchemy
 
 # Example connection (update with your DB settings if needed)
 # engine = sqlalchemy.create_engine("mysql+pymysql://user:password@localhost:3306/dbname")
@@ -71,3 +70,4 @@ if uploaded_pqe and uploaded_ie:
         file_name="domanza_shopify_compare.csv",
         mime="text/csv"
     )
+
