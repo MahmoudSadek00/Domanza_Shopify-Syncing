@@ -4,6 +4,16 @@ import pandas as pd
 st.set_page_config(page_title="Domanza Shopify Syncing", layout="wide")
 st.title("Domanza Shopify Syncing")
 
+# Hide Streamlit toolbar, header and footer
+hide_st_style = """
+    <style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    </style>
+"""
+st.markdown(hide_st_style, unsafe_allow_html=True)
+
 def read_file(f):
     name = str(f.name).lower()
     if name.endswith(".csv"):
@@ -135,3 +145,4 @@ if pqe_file and ie_file:
 
     csv = final.to_csv(index=False).encode("utf-8")
     st.download_button("Download CSV", csv, "domanza_shopify_sync.csv", "text/csv")
+
