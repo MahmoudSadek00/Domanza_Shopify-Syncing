@@ -1,10 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-# Example connection (update with your DB settings if needed)
-# engine = sqlalchemy.create_engine("mysql+pymysql://user:password@localhost:3306/dbname")
-
-st.title("Domanza vs Shopify Inventory Comparison")
+st.title("Domanza_Shopify Syncing")
 
 # File upload option
 uploaded_pqe = st.file_uploader("Upload Products_Quantities_export (CSV/Excel)", type=["csv", "xlsx"])
@@ -70,4 +67,3 @@ if uploaded_pqe and uploaded_ie:
         file_name="domanza_shopify_compare.csv",
         mime="text/csv"
     )
-
