@@ -117,7 +117,7 @@ if pqe_file and ie_file:
         if pd.notna(n) and pd.isna(s) and (n == 0):
             return "dead_item"
         if pd.notna(s) and (n != s):
-            return "miss match_qty"
+            return "mismatched_qty"
         if pd.notna(s) and (n == s):
             return "synced_sku"
         return None
@@ -145,4 +145,5 @@ if pqe_file and ie_file:
 
     csv = final.to_csv(index=False).encode("utf-8")
     st.download_button("Download CSV", csv, "domanza_shopify_sync.csv", "text/csv")
+
 
